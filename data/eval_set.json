@@ -1,0 +1,215 @@
+{
+  "_说明": "D4 离线评测集。category: simple=简单单表查询, agg=聚合统计, join=多表JOIN, time=时间范围, complex=复杂组合。gold_sql 为金标准（均已在 ecommerce.db 验证可执行）。订单类统计口径统一排除 order_status='canceled'。",
+  "questions": [
+    {
+      "id": 1,
+      "category": "simple",
+      "question": "一共有多少个订单？",
+      "gold_sql": "SELECT COUNT(DISTINCT o.order_id) AS order_count\nFROM orders o\nWHERE o.order_status != 'canceled';"
+    },
+    {
+      "id": 2,
+      "category": "simple",
+      "question": "一共有多少位客户？",
+      "gold_sql": "SELECT COUNT(DISTINCT customer_unique_id) AS customer_count\nFROM customers;"
+    },
+    {
+      "id": 3,
+      "category": "simple",
+      "question": "平台上有多少个卖家？",
+      "gold_sql": "SELECT COUNT(*) AS seller_count\nFROM sellers;"
+    },
+    {
+      "id": 4,
+      "category": "simple",
+      "question": "订单评价的平均分是多少？",
+      "gold_sql": "SELECT ROUND(AVG(review_score), 2) AS avg_score\nFROM order_reviews;"
+    },
+    {
+      "id": 5,
+      "category": "simple",
+      "question": "商品目录里一共有多少种商品？",
+      "gold_sql": "SELECT COUNT(*) AS product_count\nFROM products;"
+    },
+    {
+      "id": 6,
+      "category": "simple",
+      "question": "状态为已发货(shipped)的订单有多少？",
+      "gold_sql": "SELECT COUNT(DISTINCT order_id) AS order_count\nFROM orders\nWHERE order_status = 'shipped';"
+    },
+    {
+      "id": 7,
+      "category": "simple",
+      "question": "已取消(canceled)的订单有多少？",
+      "gold_sql": "SELECT COUNT(DISTINCT order_id) AS order_count\nFROM orders\nWHERE order_status = 'canceled';"
+    },
+    {
+      "id": 8,
+      "category": "simple",
+      "question": "平均每件商品的成交单价是多少？",
+      "gold_sql": "SELECT ROUND(AVG(oi.price), 2) AS avg_price\nFROM order_items oi\nJOIN orders o ON oi.order_id = o.order_id\nWHERE o.order_status != 'canceled';"
+    },
+    {
+      "id": 9,
+      "category": "agg",
+      "question": "总 GMV 是多少？",
+      "gold_sql": "SELECT ROUND(SUM(oi.price), 2) AS gmv\nFROM order_items oi\nJOIN orders o ON oi.order_id = o.order_id\nWHERE o.order_status != 'canceled';"
+    },
+    {
+      "id": 10,
+      "category": "agg",
+      "question": "平均客单价是多少？",
+      "gold_sql": "SELECT ROUND(SUM(oi.price) * 1.0 / COUNT(DISTINCT oi.order_id), 2) AS avg_order_value\nFROM order_items oi\nJOIN orders o ON oi.order_id = o.order_id\nWHERE o.order_status != 'canceled';"
+    },
+    {
+      "id": 11,
+      "category": "agg",
+      "question": "各支付方式的订单占比是多少？",
+      "gold_sql": "SELECT payment_type,\n       COUNT(DISTINCT order_id) AS order_count,\n       ROUND(COUNT(DISTINCT order_id) * 100.0 / (SELECT COUNT(DISTINCT order_id) FROM order_payments), 2) AS pct\nFROM order_payments\nGROUP BY payment_type\nORDER BY order_count DESC;"
+    },
+    {
+      "id": 12,
+      "category": "agg",
+      "question": "订单评价按分数分布是怎样的？",
+      "gold_sql": "SELECT review_score,\n       COUNT(*) AS review_count\nFROM order_reviews\nGROUP BY review_score\nORDER BY review_score;"
+    },
+    {
+      "id": 13,
+      "category": "agg",
+      "question": "哪种支付方式的订单量最多？",
+      "gold_sql": "SELECT payment_type,\n       COUNT(DISTINCT order_id) AS order_count\nFROM order_payments\nGROUP BY payment_type\nORDER BY order_count DESC\nLIMIT 1;"
+    },
+    {
+      "id": 14,
+      "category": "agg",
+      "question": "客户的复购率是多少？",
+      "gold_sql": "SELECT ROUND(SUM(CASE WHEN buy_times >= 2 THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 2) AS repurchase_rate_pct\nFROM (SELECT c.customer_unique_id,\n             COUNT(DISTINCT o.order_id) AS buy_times\n      FROM customers c\n      JOIN orders o ON c.customer_id = o.customer_id\n      WHERE o.order_status NOT IN ('canceled', 'unavailable')\n      GROUP BY c.customer_unique_id);"
+    },
+    {
+      "id": 15,
+      "category": "agg",
+      "question": "平均每个订单包含几件商品？",
+      "gold_sql": "SELECT ROUND(AVG(cnt), 2) AS avg_items_per_order\nFROM (SELECT order_id, COUNT(*) AS cnt\n      FROM order_items\n      GROUP BY order_id);"
+    },
+    {
+      "id": 16,
+      "category": "agg",
+      "question": "信用卡(credit_card)支付的总金额是多少？",
+      "gold_sql": "SELECT ROUND(SUM(payment_value), 2) AS total_amount\nFROM order_payments\nWHERE payment_type = 'credit_card';"
+    },
+    {
+      "id": 17,
+      "category": "agg",
+      "question": "所有订单的总运费是多少？",
+      "gold_sql": "SELECT ROUND(SUM(oi.freight_value), 2) AS total_freight\nFROM order_items oi\nJOIN orders o ON oi.order_id = o.order_id\nWHERE o.order_status != 'canceled';"
+    },
+    {
+      "id": 18,
+      "category": "join",
+      "question": "哪个品类销量最高？请列出销量前 10 的品类",
+      "gold_sql": "SELECT t.product_category_name_english AS category,\n       SUM(oi.price) AS sales\nFROM order_items oi\nJOIN orders o ON oi.order_id = o.order_id\nJOIN products p ON oi.product_id = p.product_id\nJOIN product_category_name_translation t ON p.product_category_name = t.product_category_name\nWHERE o.order_status != 'canceled'\nGROUP BY t.product_category_name_english\nORDER BY sales DESC\nLIMIT 10;"
+    },
+    {
+      "id": 19,
+      "category": "join",
+      "question": "各州的订单数量分布是怎样的？",
+      "gold_sql": "SELECT c.customer_state,\n       COUNT(DISTINCT o.order_id) AS order_count\nFROM orders o\nJOIN customers c ON o.customer_id = c.customer_id\nWHERE o.order_status != 'canceled'\nGROUP BY c.customer_state\nORDER BY order_count DESC;"
+    },
+    {
+      "id": 20,
+      "category": "join",
+      "question": "每个州的 GMV 是多少？",
+      "gold_sql": "SELECT c.customer_state,\n       ROUND(SUM(oi.price), 2) AS gmv\nFROM orders o\nJOIN customers c ON o.customer_id = c.customer_id\nJOIN order_items oi ON o.order_id = oi.order_id\nWHERE o.order_status != 'canceled'\nGROUP BY c.customer_state\nORDER BY gmv DESC;"
+    },
+    {
+      "id": 21,
+      "category": "join",
+      "question": "取消订单最多的前 5 个州是哪些？",
+      "gold_sql": "SELECT c.customer_state,\n       COUNT(DISTINCT o.order_id) AS canceled_count\nFROM orders o\nJOIN customers c ON o.customer_id = c.customer_id\nWHERE o.order_status = 'canceled'\nGROUP BY c.customer_state\nORDER BY canceled_count DESC\nLIMIT 5;"
+    },
+    {
+      "id": 22,
+      "category": "join",
+      "question": "客单价最高的前 5 个州是哪些？",
+      "gold_sql": "SELECT c.customer_state,\n       ROUND(SUM(oi.price) * 1.0 / COUNT(DISTINCT o.order_id), 2) AS avg_order_value\nFROM orders o\nJOIN customers c ON o.customer_id = c.customer_id\nJOIN order_items oi ON o.order_id = oi.order_id\nWHERE o.order_status != 'canceled'\nGROUP BY c.customer_state\nORDER BY avg_order_value DESC\nLIMIT 5;"
+    },
+    {
+      "id": 23,
+      "category": "join",
+      "question": "销量最高的前 10 个商品是哪些？",
+      "gold_sql": "SELECT p.product_id,\n       SUM(oi.price) AS sales\nFROM order_items oi\nJOIN orders o ON oi.order_id = o.order_id\nJOIN products p ON oi.product_id = p.product_id\nWHERE o.order_status != 'canceled'\nGROUP BY p.product_id\nORDER BY sales DESC\nLIMIT 10;"
+    },
+    {
+      "id": 24,
+      "category": "join",
+      "question": "销售额最高的前 5 个卖家是哪些？",
+      "gold_sql": "SELECT s.seller_id,\n       ROUND(SUM(oi.price), 2) AS sales\nFROM order_items oi\nJOIN orders o ON oi.order_id = o.order_id\nJOIN sellers s ON oi.seller_id = s.seller_id\nWHERE o.order_status != 'canceled'\nGROUP BY s.seller_id\nORDER BY sales DESC\nLIMIT 5;"
+    },
+    {
+      "id": 25,
+      "category": "join",
+      "question": "消费金额最高的前 10 位客户是哪些？",
+      "gold_sql": "SELECT c.customer_unique_id,\n       ROUND(SUM(oi.price), 2) AS total_spent\nFROM orders o\nJOIN customers c ON o.customer_id = c.customer_id\nJOIN order_items oi ON o.order_id = oi.order_id\nWHERE o.order_status != 'canceled'\nGROUP BY c.customer_unique_id\nORDER BY total_spent DESC\nLIMIT 10;"
+    },
+    {
+      "id": 26,
+      "category": "time",
+      "question": "2018年1月的订单量是多少？",
+      "gold_sql": "SELECT COUNT(DISTINCT order_id) AS order_count\nFROM orders\nWHERE order_status != 'canceled'\n  AND strftime('%Y-%m', order_purchase_timestamp) = '2018-01';"
+    },
+    {
+      "id": 27,
+      "category": "time",
+      "question": "2017年全年一共有多少订单？",
+      "gold_sql": "SELECT COUNT(DISTINCT order_id) AS order_count\nFROM orders\nWHERE order_status != 'canceled'\n  AND strftime('%Y', order_purchase_timestamp) = '2017';"
+    },
+    {
+      "id": 28,
+      "category": "time",
+      "question": "2018年每个月的订单量趋势如何？",
+      "gold_sql": "SELECT strftime('%Y-%m', order_purchase_timestamp) AS month,\n       COUNT(DISTINCT order_id) AS order_count\nFROM orders\nWHERE order_status != 'canceled'\n  AND strftime('%Y', order_purchase_timestamp) = '2018'\nGROUP BY month\nORDER BY month;"
+    },
+    {
+      "id": 29,
+      "category": "time",
+      "question": "2018年每个月的 GMV 是多少？",
+      "gold_sql": "SELECT strftime('%Y-%m', o.order_purchase_timestamp) AS month,\n       ROUND(SUM(oi.price), 2) AS gmv\nFROM orders o\nJOIN order_items oi ON o.order_id = oi.order_id\nWHERE o.order_status != 'canceled'\n  AND strftime('%Y', o.order_purchase_timestamp) = '2018'\nGROUP BY month\nORDER BY month;"
+    },
+    {
+      "id": 30,
+      "category": "time",
+      "question": "平均配送时长是多少天？",
+      "gold_sql": "SELECT ROUND(AVG(julianday(order_delivered_customer_date)\n              - julianday(order_purchase_timestamp)), 2) AS avg_delivery_days\nFROM orders\nWHERE order_status = 'delivered'\n  AND order_delivered_customer_date IS NOT NULL;"
+    },
+    {
+      "id": 31,
+      "category": "complex",
+      "question": "各州在2018年的客单价排名如何？",
+      "gold_sql": "SELECT c.customer_state,\n       ROUND(SUM(oi.price) * 1.0 / COUNT(DISTINCT o.order_id), 2) AS avg_order_value\nFROM orders o\nJOIN customers c ON o.customer_id = c.customer_id\nJOIN order_items oi ON o.order_id = oi.order_id\nWHERE o.order_status != 'canceled'\n  AND strftime('%Y', o.order_purchase_timestamp) = '2018'\nGROUP BY c.customer_state\nORDER BY avg_order_value DESC;"
+    },
+    {
+      "id": 32,
+      "category": "complex",
+      "question": "在2017和2018两年都买过东西的客户有多少？",
+      "gold_sql": "SELECT COUNT(*) AS repeat_customers\nFROM (SELECT c.customer_unique_id\n      FROM orders o\n      JOIN customers c ON o.customer_id = c.customer_id\n      WHERE o.order_status != 'canceled'\n        AND strftime('%Y', o.order_purchase_timestamp) IN ('2017', '2018')\n      GROUP BY c.customer_unique_id\n      HAVING COUNT(DISTINCT strftime('%Y', o.order_purchase_timestamp)) = 2);"
+    },
+    {
+      "id": 33,
+      "category": "complex",
+      "question": "订单量最高的 3 个月份是哪几个月？",
+      "gold_sql": "SELECT strftime('%Y-%m', order_purchase_timestamp) AS month,\n       COUNT(DISTINCT order_id) AS order_count\nFROM orders\nWHERE order_status != 'canceled'\nGROUP BY month\nORDER BY order_count DESC\nLIMIT 3;"
+    },
+    {
+      "id": 34,
+      "category": "complex",
+      "question": "订单取消率（取消占比）最高的前 5 个州是哪些？",
+      "gold_sql": "SELECT c.customer_state,\n       ROUND(SUM(CASE WHEN o.order_status = 'canceled' THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 2) AS cancel_rate\nFROM orders o\nJOIN customers c ON o.customer_id = c.customer_id\nGROUP BY c.customer_state\nORDER BY cancel_rate DESC\nLIMIT 5;"
+    },
+    {
+      "id": 35,
+      "category": "complex",
+      "question": "每个月的新增客户数是多少？",
+      "gold_sql": "SELECT strftime('%Y-%m', first_order_time) AS month,\n       COUNT(*) AS new_customer_count\nFROM (SELECT c.customer_unique_id,\n             MIN(o.order_purchase_timestamp) AS first_order_time\n      FROM customers c\n      JOIN orders o ON c.customer_id = o.customer_id\n      WHERE o.order_status != 'canceled'\n      GROUP BY c.customer_unique_id)\nGROUP BY month\nORDER BY month;"
+    }
+  ]
+}

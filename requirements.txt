@@ -1,0 +1,10 @@
+# 智能数据分析助手「问问数据」依赖清单
+# Python 3.10+
+# 说明：openai 锁定 <2（本地与云端一致，使用 openai SDK 兼容的 DeepSeek 端点）
+pandas>=2.0
+numpy>=1.24
+streamlit>=1.30
+plotly>=5.15
+openai>=1.30,<2
+sqlalchemy>=2.0
+python-dotenv>=1.0

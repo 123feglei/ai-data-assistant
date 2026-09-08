@@ -1,0 +1,18 @@
+# 敏感配置：API Key 不入库
+.env
+.env.local
+
+# Python 缓存与虚拟环境
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+.venv/
+venv/
+
+# Kaggle 原始 CSV（体积大；数据已导入 data/ecommerce.db，无需入库）
+brazilian-ecommerce/
+
+# IDE / 系统文件
+.vscode/
+.idea/
+.DS_Store
