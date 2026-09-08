@@ -12,7 +12,8 @@ venv/
 # Kaggle 原始 CSV（体积大；数据已导入 data/ecommerce.db，无需入库）
 brazilian-ecommerce/
 
-
+# 本地个人素材（不随仓库公开）
+求职作品讲解与面试准备.md
 
 # IDE / 系统文件
 .vscode/
