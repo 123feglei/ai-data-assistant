@@ -41,13 +41,20 @@ def _get_config(key: str, default: str = "") -> str:
 
 
 # ---------- 配置项（全部可从 .env / Secrets 覆盖） ----------
+# URL 类配置做字符清理：防复制时误带 markdown 反引号/引号（如 `https://...`）
+def _clean_url(url: str) -> str:
+    return url.strip().strip("`'\" ")
+
+
 DEEPSEEK_API_KEY = _get_config("DEEPSEEK_API_KEY")
-DEEPSEEK_BASE_URL = _get_config("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
+DEEPSEEK_BASE_URL = _clean_url(
+    _get_config("DEEPSEEK_BASE_URL", "https://api.deepseek.com"))
 DEEPSEEK_MODEL = _get_config("DEEPSEEK_MODEL", "deepseek-chat")
 
 # 后端开关：api=DeepSeek 云 API；ollama=本地 Ollama（如 qwen2.5:7b）
 LLM_BACKEND = _get_config("LLM_BACKEND", "api").lower()
-OLLAMA_BASE_URL = _get_config("OLLAMA_BASE_URL", "http://localhost:11434/v1")
+OLLAMA_BASE_URL = _clean_url(
+    _get_config("OLLAMA_BASE_URL", "http://localhost:11434/v1"))
 OLLAMA_MODEL = _get_config("OLLAMA_MODEL", "qwen2.5:7b")
 
 # 数据库与请求超时
